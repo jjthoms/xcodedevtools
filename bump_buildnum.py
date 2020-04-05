@@ -2,9 +2,12 @@
 #
 # Bump build number in Info.plist files if a source file have changed.
 #
-# usage: bump_buildnum.py buildnum.ver Info.plist [ ... Info.plist ]
+# usage: bump_buildnum.py buildnum.ver sourceDir Info.plist [ ... Info.plist ]
 #
 # Copyright (c)2019 Andy Duplain <trojanfoe@gmail.com>
+# Original: https://github.com/trojanfoe/xcodedevtools/blob/master/bump_buildnum.py
+#
+# Modified by jjthoms, 2020
 #
 
 import sys, os, subprocess, re
@@ -59,6 +62,9 @@ def should_bump(vername, dirname):
             allnames.append(os.path.join(dirname, filename))
 
     for filename in allnames:
+        if filename.endswith("Info.plist"):
+            continue
+    
         filestat = os.stat(filename)
         if filestat.st_mtime > verstat.st_mtime:
             print("{0} is newer than {1}".format(filename, vername))
@@ -66,7 +72,7 @@ def should_bump(vername, dirname):
 
     return False
 
-def upver(vername):
+def upver(vername, srcdir=None):
     (version, build) = read_verfile(vername)
     if version == None or build == None:
         print("Failed to read version/build from {0}".format(vername))
@@ -74,7 +80,7 @@ def upver(vername):
 
     # Bump the version number if any files in the same directory as the version file
     # have changed, including sub-directories.
-    srcdir = os.path.dirname(vername)
+    srcdir = os.path.dirname(vername) if srcdir is None else srcdir
     bump = should_bump(vername, srcdir)
 
     if bump:
@@ -92,17 +98,19 @@ if __name__ == "__main__":
         print("{0}: Not running while cleaning".format(sys.argv[0]))
         sys.exit(0)
 
-    if len(sys.argv) < 3:
-        print("Usage: {0} buildnum.ver Info.plist [... Info.plist]".format(sys.argv[0]))
+    if len(sys.argv) != 4:
+        print("Usage: {0} buildnum.ver check_dir Info.plist [... Info.plist]".format(sys.argv[0]))
         sys.exit(1)
     vername = sys.argv[1]
+    srcdir = sys.argv[2]
 
-    (version, build) = upver(vername)
+    (version, build) = upver(vername, srcdir)
     if version == None or build == None:
         sys.exit(2)
 
-    for i in range(2, len(sys.argv)):
+    for i in range(3, len(sys.argv)):
         plistname = sys.argv[i]
         set_plist_version(plistname, version, build)
 
     sys.exit(0)
+
