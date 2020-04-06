@@ -14,5 +14,4 @@ In order to configure `bump_buildnum.py` into your Xcode project:
   - `source_directories` array defining source code directories. The script will search these recursively and increment build numbers if they contain modified files.
   - `info_plist_files` array defining `Info.plist` files for each target to update.
 - Add a "New Run Script Phase" in your target's build settings
-- Call python script from phase (absolute path), passing (relative paths) buildnum.ver, source directory to search recursively, and one or more Info.plist files 
-
+- Call `bump_buildnum.py` from phase, passing `Settings.json` as argument  
