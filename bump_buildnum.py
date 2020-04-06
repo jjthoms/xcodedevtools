@@ -11,6 +11,7 @@
 #
 
 import sys, os, subprocess, re
+import json
 
 def read_verfile(name):
     version = None
@@ -54,34 +55,36 @@ def set_plist_version(plistname, version, build):
     print("Updated {0} with v{1} ({2})".format(plistname, version, build))
     return True
 
-def should_bump(vername, dirname):
+def should_bump(vername, srcdirs):
     verstat = os.stat(vername)
     allnames = []
-    for dirname, dirnames, filenames in os.walk(dirname):
-        for filename in filenames:
-            allnames.append(os.path.join(dirname, filename))
-
-    for filename in allnames:
-        if filename.endswith("Info.plist"):
-            continue
     
-        filestat = os.stat(filename)
-        if filestat.st_mtime > verstat.st_mtime:
-            print("{0} is newer than {1}".format(filename, vername))
-            return True
+    for dirname in srcdirs:
+    
+        for dirname, dirnames, filenames in os.walk(dirname):
+            for filename in filenames:
+                allnames.append(os.path.join(dirname, filename))
+
+        for filename in allnames:
+            if filename.endswith("Info.plist"):
+                continue
+        
+            filestat = os.stat(filename)
+            if filestat.st_mtime > verstat.st_mtime:
+                print("{0} is newer than {1}".format(filename, vername))
+                return True
 
     return False
 
-def upver(vername, srcdir=None):
+def upver(vername, srcdirs):
     (version, build) = read_verfile(vername)
     if version == None or build == None:
         print("Failed to read version/build from {0}".format(vername))
         return False
 
-    # Bump the version number if any files in the same directory as the version file
+    # Bump the version number if any files in the source directories
     # have changed, including sub-directories.
-    srcdir = os.path.dirname(vername) if srcdir is None else srcdir
-    bump = should_bump(vername, srcdir)
+    bump = should_bump(vername, srcdirs)
 
     if bump:
         build += 1
@@ -98,19 +101,25 @@ if __name__ == "__main__":
         print("{0}: Not running while cleaning".format(sys.argv[0]))
         sys.exit(0)
 
-    if len(sys.argv) != 4:
-        print("Usage: {0} buildnum.ver check_dir Info.plist [... Info.plist]".format(sys.argv[0]))
+    if len(sys.argv) != 2:
+        print("Usage: {0} settings.json".format(sys.argv[0]))
         sys.exit(1)
-    vername = sys.argv[1]
-    srcdir = sys.argv[2]
+        
+    with open(sys.argv[1], "r") as settings_file:
+        settings = json.load(settings_file)
+        
+    if settings == None:
+        sys.exit(2)
 
-    (version, build) = upver(vername, srcdir)
+    vername = settings["version_file"]
+    srcdirs = settings["source_directories"]
+    plistnames = settings["info_plist_files"]
+
+    (version, build) = upver(vername, srcdirs)
     if version == None or build == None:
         sys.exit(2)
 
-    for i in range(3, len(sys.argv)):
-        plistname = sys.argv[i]
+    for plistname in plistnames:
         set_plist_version(plistname, version, build)
 
     sys.exit(0)
-
